@@ -1,0 +1,61 @@
+s = input()
+print(s[0].upper()+s[1:].lower())
+
+s = input()
+print(s.count('-'))
+
+s = input()
+print(s.find('ra'))
+
+s = input()
+a = s.replace('---','-')
+b = a.replace('--','-')
+print(b)
+
+a,b,c = map(str, input().split())
+print(a.rjust(3,'0'))
+print(b.rjust(3,'0'))
+print(c.rjust(3,'0'))
+
+s = input()
+print(s.count(' ')+1)
+
+s=input()
+print(s.replace(' ', ';'))
+
+lst = list(map(int,input().split()))
+a = lst[0]!=lst[-1]
+lst.append(a)
+print(*lst)
+
+cities = ["Москва", "Казань", "Ярославль"]
+cities.insert(1,'Ульяновск')
+print(*cities)
+
+lst = list(input())
+lst.pop(0)
+lst.pop(0)
+lst.insert(0,'8')
+lst.remove('-')
+lst.remove('-')
+print("".join(lst))
+
+s = input().split()
+print(f'{s[-1]} {s[0][0]}.{s[1][0]}.')
+
+s = list(map(int,input().split()))
+s.sort()
+print(*s[:3])
+
+lst = list(map(int, input().split()))
+a = lst[-1]%2 == 1
+lst.pop()
+lst.append(a)
+print(*lst)
+
+lst = list(map(int,input().split()))
+print(lst.count(2))
+
+lst = list(input().split())
+lst.sort()
+print(*lst[1:])
