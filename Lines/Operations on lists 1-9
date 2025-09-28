@@ -1,0 +1,33 @@
+l = map(int, input().split())
+print(list(l))
+
+cities = input().split()
+print('Москва' in list(cities))
+
+cities = input().split()
+print(cities[-1])
+
+marks = list(map(int, input().split()))
+print(round(sum(marks)/len(marks),1))
+
+a,b,c,d=input(),input(),int(input()),float(input())
+c = 'Пушкин'
+list = [a,c,d*2]
+print(list)
+
+inr = list(map(int,input().split()))
+print(max(inr),min(inr),sum(inr))
+
+lst =  list(map(int, input().split()))
+lst = sorted(lst, reverse=True)
+print(*lst)
+
+cities = ["Москва", "Тверь", "Вологда"]
+s = input().split()
+lst = cities+s
+print(*lst)
+
+s = input().split()
+cities = ["Москва", "Тверь", "Вологда"]
+lst = s+cities
+print(*lst)
