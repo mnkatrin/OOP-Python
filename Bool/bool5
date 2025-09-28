@@ -1,0 +1,3 @@
+a = float(input())
+b = 0<=a<=2 or 10<=a<=20
+print(b)
