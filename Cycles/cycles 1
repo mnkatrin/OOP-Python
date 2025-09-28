@@ -1,0 +1,8 @@
+#Вводится N-чисел, найти максимальное среди них
+n = int(input())
+max = 0
+for i in range(n):
+    s = int(input())
+    if s > max:
+        max = s
+print(max)
