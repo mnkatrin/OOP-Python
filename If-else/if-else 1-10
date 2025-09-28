@@ -1,0 +1,65 @@
+s,m = map(float, input().split())
+if s>m:
+    print(s)
+else:
+    print(m)
+
+/*s,m = map(float, input().split())
+print(max(s,m))*/
+
+s = input()
+s = s.upper()
+n = len(s)
+if s[:] == s[n::-1]:
+    print('ДА')
+else:
+    print('НЕТ')
+
+m,n = map(int, input().split())
+if m%n == 0:
+    print(int(m/n))
+else:
+    print(f'{m} на {n} нацело не делится')
+
+a,b,c = map(int, input().split())
+if c**2==a**2+b**2:
+    print('ДА')
+else:
+    print('НЕТ')
+
+n = int(input())
+if n%10 == 7:
+    print('ДА')
+else:
+    print('НЕТ')
+
+n = input()
+if 't' in n and 'h' in n and 'o' in n:
+    print('ДА')
+else:
+    print('НЕТ')
+
+cities = list(input().split())
+if 'Москва' in cities:
+    cities.remove('Москва')
+    print(*cities)
+else:
+    print(*cities)
+
+a,b,c,d = map(int,input().split())
+if (a-2>=c and b-2>=d) or (a-2>=d and b-2>=c):
+    print('ДА')
+else:
+    print('НЕТ')
+
+n = list(map(int,input()))
+if (n[0]+n[1]+n[2] == n[3]+n[4]+n[5]):
+    print('ДА')
+else:
+    print('НЕТ')
+
+t = float(input())
+if t%5 >= 3.0:
+    print('red')
+else:
+    print('green')
