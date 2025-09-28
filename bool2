@@ -1,4 +1,0 @@
-a = float(input())
-b = a * 100 % 100
-c = b>50
-print(c)
