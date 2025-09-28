@@ -1,0 +1,10 @@
+#Вводится N-строк, сравнить длинну всех строк и вывести самую длинную
+n = int(input())
+max = 0
+for i in range(n):
+    s = input()
+    b = len(s)
+    if  b > max:
+        max = b
+        res = s
+print(res)
