@@ -1,0 +1,3 @@
+# put your python code 
+a,b = map(str, input().split())
+print('Переменная a = '+ a + ', переменная b = ' + b) 
