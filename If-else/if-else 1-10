@@ -4,8 +4,8 @@ if s>m:
 else:
     print(m)
 
-/*s,m = map(float, input().split())
-print(max(s,m))*/
+#s,m = map(float, input().split())
+#print(max(s,m))
 
 s = input()
 s = s.upper()
