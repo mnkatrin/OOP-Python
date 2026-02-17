@@ -1,0 +1,317 @@
+import sys
+import pymysql
+from PyQt6 import QtWidgets, uic, QtCore
+from PyQt6.QtWidgets import QMessageBox, QApplication
+import traceback
+from PyQt6.QtCore import QDate, QTime, pyqtSignal
+
+
+def exception_hook(extype, value, tb):
+    traceback.print_exception(extype,value,tb)
+    QMessageBox.critical(None, 'ОШибка', str(value))
+def get_connectio():
+    return pymysql.connect(host='localhost', user='root', password='', database='flower', cursorclass=pymysql.cursors.DictCursor)
+def fill_table(tw_widget, orders, columns):
+    tw_widget.setRowCount(0)
+    for row_num, row_data in enumerate(orders):
+        tw_widget.insertRow(row_num)
+        for col_num, col_name in enumerate(columns):
+            value1 = row_data.get(col_name, '')
+            tw_widget.setItem(row_num, col_num, QtWidgets.QTableWidgetItem(str(value1)))
+class LoginWindow(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+        uic.loadUi('login.ui', self)
+        self.pb_log.clicked.connect(self.login)
+    def login(self):
+        login = self.le_log.text()
+        password =self.le_pass.text()
+        conn = get_connectio()
+        cursor = conn.cursor()
+        cursor.execute('select * from users where login=%s and password=%s', (login, password))
+        user = cursor.fetchone()
+        conn.close()
+        if not user:
+            QMessageBox.warning(self, 'Ошибка', 'Неправильный логин или пароль')
+        if user['role'] == 'client':
+            client_id = user.get('client_id')
+            self.window = Client(client_id)
+        elif user['role'] == 'seller':
+            self.window = Seller()
+        else:
+            self.window = Director()
+        self.window.show()
+        self.close()
+class Seller(QtWidgets.QWidget):
+    closed = pyqtSignal()
+    def __init__(self):
+        super().__init__()
+        uic.loadUi('admin.ui', self)
+        self.pb_flower.clicked.connect(self.load_flower)
+        self.pb_filter.clicked.connect(self.filter)
+        self.pb_create.clicked.connect(self.create_order)
+        self.pb_delete.clicked.connect(self.delete_order)
+        self.pb_payment.clicked.connect(self.payment)
+        self.load_flower()
+        self.load_orders()
+    def load_orders(self):
+        conn = get_connectio()
+        cursor = conn.cursor()
+        cursor.execute('select * from orders')
+        orders = cursor.fetchall()
+        conn.close()
+        columns = ['order_id', 'client_id', 'delivery_date', 'time_from', 'time_to', 'address',
+                   'status', 'total_cost', 'payment']
+        fill_table(self.tw_orders, orders, columns)
+    def load_flower(self):
+        conn = get_connectio()
+        cursor = conn.cursor()
+        cursor.execute('select * from flowers')
+        orders = cursor.fetchall()
+        conn.close()
+        columns = ['flower_id', 'name_p', 'description', 'price']
+        fill_table(self.tw_flower, orders, columns)
+    def payment(self):
+        selected = self.tw_orders.currentRow()
+        if selected < 0:
+            return
+        order_id = self.tw_orders.item(selected, 0).text()
+        self.window = Payment(order_id)
+        self.window.closed.connect(self.load_orders)
+        self.window.show()
+    def filter(self):
+        le_form = self.le_form.text()
+        le_to = self.le_to.text()
+        conn = get_connectio()
+        cursor = conn.cursor()
+        cursor.execute('select * from flowers where price between %s and %s', (le_form, le_to))
+        orders = cursor.fetchall()
+        conn.close()
+        columns = ['flower_id', 'name_f', 'description', 'price']
+        fill_table(self.tw_flower, orders, columns)
+        self.le_form.clear()
+        self.le_to.clear()
+    def delete_order(self):
+        selected = self.tw_orders.currentRow()
+        if selected < 0:
+            return
+        order_id = self.tw_orders.item(selected, 0).text()
+        conn = get_connectio()
+        cursor = conn.cursor()
+        cursor.execute('update orders set status=%s where order_id=%s', ('Отменен', order_id))
+        conn.commit()
+        conn.close()
+        self.load_orders()
+    def create_order(self):
+        self.window = CreateOrder()
+        self.window.closed.connect(self.load_orders)
+        self.window.show()
+
+class Payment(QtWidgets.QWidget):
+    closed = pyqtSignal()
+    def __init__(self, order_id):
+        super().__init__()
+        uic.loadUi('payment.ui', self)
+        self.order_id = order_id
+        self.pb_save.clicked.connect(self.save)
+        self.load_payment()
+        self.load_vid()
+    def load_payment(self):
+        conn = get_connectio()
+        cursor = conn.cursor()
+        cursor.execute('select * from orders where order_id = %s', (self.order_id,))
+        payment_id = cursor.fetchone()
+        conn.close()
+        self.le_payment.setText(payment_id['total_cost'])
+        self.le_payment.setEnabled(False)
+    def load_vid(self):
+        self.cb_payment.addItem('выберете вид оплаты', None)
+        conn =  get_connectio()
+        cursor = conn.cursor()
+        cursor.execute('select * from payment')
+        flowers = cursor.fetchall()
+        for f in flowers:
+            self.cb_payment.addItem(f['name_p'], f['payment_id'])
+        conn.close()
+    def save(self):
+        cb_payment = self.cb_payment.currentText()
+        conn = get_connectio()
+        cursor = conn.cursor()
+        cursor.execute('update orders set status=%s , total_cost=%s, payment=%s where order_id =%s ', ('Оплачен', 0.00, cb_payment, self.order_id))
+        conn.commit()
+        self.closed.emit()
+        self.close()
+
+class CreateOrder(QtWidgets.QWidget):
+    closed = pyqtSignal()
+    def __init__(self):
+        super().__init__()
+        uic.loadUi('create.ui', self)
+        self.pb_save.clicked.connect(self.save)
+        self.load_flowers()
+        self.load_craft()
+        self.load_acses()
+    def load_flowers(self):
+        self.cb_flower.addItem('выберете букет или цветок', None)
+        conn =  get_connectio()
+        cursor = conn.cursor()
+        cursor.execute('select * from flowers')
+        flowers = cursor.fetchall()
+        for f in flowers:
+            self.cb_flower.addItem(f['name_f'], f['flower_id'])
+        conn.close()
+    def load_craft(self):
+        self.cb_craft.addItem('выберете упаковку', None)
+        conn =  get_connectio()
+        cursor = conn.cursor()
+        cursor.execute('select * from craft')
+        flowers = cursor.fetchall()
+        for f in flowers:
+            self.cb_craft.addItem(f['craft'], f['craft_id'])
+        conn.close()
+    def load_acses(self):
+        self.cb_acses.addItem('выберете украшение', None)
+        conn =  get_connectio()
+        cursor = conn.cursor()
+        cursor.execute('select * from acses')
+        flowers = cursor.fetchall()
+        for f in flowers:
+            self.cb_acses.addItem(f['name_a'], f['acses_id'])
+        conn.close()
+    def save(self):
+        fio = self.le_fio.text()
+        phone = self.le_phone.text()
+        email = self.le_email.text()
+        cb_f = self.cb_flower.currentData()
+        cb_c = self.cb_craft.currentData()
+        cb_a = self.cb_acses.currentData()
+        quantity = self.le_quantity.text()
+        conn = get_connectio()
+        cursor = conn.cursor()
+        cursor.execute('select * from clients where fio=%s and phone=%s and email=%s', (fio, phone, email))
+        client =  cursor.fetchone()
+        if client:
+            client_id = client.get('client_id')
+        else:
+            cursor.execute('insert into clients (fio, phone, email) values (%s, %s, %s)', (fio, phone, email))
+            client_id = cursor.lastrowid
+            conn.commit()
+        cursor.execute('insert into orders (client_id,status) values (%s, %s)', (client_id, 'Принят'))
+        order_id = cursor.lastrowid
+        conn.commit()
+        cursor.execute('insert into order_items (order_id, flower_id, craft_id, acses_id, quantity) values (%s, %s, %s, %s, %s)',
+                       (order_id, cb_f, cb_c, cb_a, quantity))
+        conn.commit()
+        conn.close()
+        self.closed.emit()
+        self.close()
+
+class Client(QtWidgets.QWidget):
+    def __init__(self, client_id):
+        super().__init__()
+        uic.loadUi('client.ui', self)
+        self.client_id = client_id
+        self.pb_create.clicked.connect(self.create)
+        self.pb_payment.clicked.connect(self.pay)
+        self.load_orders()
+        self.load_flowers()
+
+    def load_flowers(self):
+        conn = get_connectio()
+        cursor = conn.cursor()
+        cursor.execute('select * from flowers')
+        orders = cursor.fetchall()
+        conn.close()
+        columns = ['flower_id', 'name_p', 'description', 'price']
+        fill_table(self.tw_flower, orders, columns)
+
+    def load_orders(self):
+        conn = get_connectio()
+        cursor = conn.cursor()
+        cursor.execute('''select o.order_id, o.status, o.total_cost, f.name_f, c.craft, a.name_a from orders o
+        left join order_items i on i.order_id = o.order_id left join flowers f on f.flower_id = i.flower_id 
+        left join craft c on c.craft_id = i.craft_id left join acses a on a.acses_id = i.acses_id where client_id = %s''', (self.client_id,))
+        orders = cursor.fetchall()
+        conn.close()
+        columns = ['order_id', 'status', 'total_cost', 'name_f', 'craft', 'name_a']
+        fill_table(self.tw_orders, orders, columns)
+    def create(self):
+        self.window = CreateClient(client_id=self.client_id)
+        self.window.closed.connect(self.load_orders)
+        self.window.show()
+    def pay(self):
+        selected = self.tw_orders.currentRow()
+        if selected < 0:
+            return
+        order_id = self.tw_orders.item(selected, 0).text()
+        conn = get_connectio()
+        cursor = conn.cursor()
+        cursor.execute('update orders set status=%s, total_cost=%s where order_id =%s ',
+                           ('Оплачен', 0.00, order_id))
+        conn.commit()
+        conn.close()
+        self.load_orders()
+
+class CreateClient(QtWidgets.QWidget):
+    closed = pyqtSignal()
+    def __init__(self, client_id):
+        super().__init__()
+        uic.loadUi('create_client.ui', self)
+        self.client_id = client_id
+        self.pb_save.clicked.connect(self.save)
+        self.load_flowers()
+        self.load_craft()
+        self.load_acses()
+    def load_flowers(self):
+        self.cb_flower.addItem('выберете букет или цветок', None)
+        conn =  get_connectio()
+        cursor = conn.cursor()
+        cursor.execute('select * from flowers')
+        flowers = cursor.fetchall()
+        for f in flowers:
+            self.cb_flower.addItem(f['name_f'], f['flower_id'])
+        conn.close()
+    def load_craft(self):
+        self.cb_craft.addItem('выберете упаковку', None)
+        conn =  get_connectio()
+        cursor = conn.cursor()
+        cursor.execute('select * from craft')
+        flowers = cursor.fetchall()
+        for f in flowers:
+            self.cb_craft.addItem(f['craft'], f['craft_id'])
+        conn.close()
+    def load_acses(self):
+        self.cb_acses.addItem('выберете украшение', None)
+        conn =  get_connectio()
+        cursor = conn.cursor()
+        cursor.execute('select * from acses')
+        flowers = cursor.fetchall()
+        for f in flowers:
+            self.cb_acses.addItem(f['name_a'], f['acses_id'])
+        conn.close()
+    def save(self):
+        de = self.de.date().toString('yyyy-MM-dd')
+        te_from = self.te_from.time().toString('HH:mm:ss')
+        te_to = self.te_to.time().toString('HH:mm:ss')
+        cb_f = self.cb_flower.currentData()
+        cb_c = self.cb_craft.currentData()
+        cb_a = self.cb_acses.currentData()
+        quantity = self.le_quantity.text()
+        conn = get_connectio()
+        cursor = conn.cursor()
+        cursor.execute('insert into orders (client_id,delivery_date, time_from, time_to, status) values (%s, %s, %s, %s, %s)', (self.client_id,de, te_from, te_to, 'Создан'))
+        order_id = cursor.lastrowid
+        conn.commit()
+        cursor.execute('insert into order_items (order_id, flower_id, craft_id, acses_id, quantity) values (%s, %s, %s, %s, %s)',
+                       (order_id, cb_f, cb_c, cb_a, quantity))
+        conn.commit()
+        conn.close()
+        self.closed.emit()
+        self.close()
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    window = LoginWindow()
+    window.show()
+    sys.excepthook = exception_hook
+    sys.exit(app.exec())
